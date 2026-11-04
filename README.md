@@ -1,4 +1,4 @@
-# G814Amp: internal speakers for the ASUS ROG Strix G16 (G814J) on macOS
+# G814Amp: internal speakers for the ASUS ROG Strix G18 (G814J) on macOS
 
 The G814J's internal speakers are driven by two **Cirrus Logic CS35L41** smart amplifiers
 on an SPI bus, not by the Realtek codec. macOS has no driver for them, so on a Hackintosh
@@ -6,7 +6,7 @@ the speakers stay silent even when audio "plays". G814Amp is a kernel extension 
 those amps, the way Linux's `cs35l41_hda` driver does, including Cirrus's speaker-protection
 firmware.
 
-**Status:** working on a G814J (Intel i7-13650HX, RTX 4060) with macOS 26.7.2 (Tahoe) and the
+**Status:** working on a G814JV (Intel i7-13650HX, RTX 4060) with macOS 26.7.2 (Tahoe) and the
 NullMoth driver package 2.7.1. Both speakers play at full, protected volume, start
 automatically at boot and recover after sleep.
 
@@ -17,7 +17,7 @@ automatically at boot and recover after sleep.
 
 ## Requirements
 
-- **ASUS ROG Strix G16 G814J** (G814JU / JV / JI). Check: *System Information → Audio* or
+- **ASUS ROG Strix G18 G814J** (tested on a G814JV; other G814J variants should work if they have the same subsystem ID). Check: *System Information → Audio* or
   `ioreg -l | grep pci1043,1ccf` must find something.
 - macOS with a working **Realtek ALC294 driver** that outputs to pin 0x17. Tested with
   **NullMoth 2.7.1's NMXAudio** on macOS 26. The amps take their audio from the Realtek

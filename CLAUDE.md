@@ -1,7 +1,7 @@
 # CLAUDE.md: working on G814Amp
 
 G814Amp is a macOS kernel extension (IOKit, C++) that drives the two Cirrus Logic CS35L41
-speaker amps on the ASUS ROG Strix G16 G814J (HD Audio subsystem 1043:1ccf). Read README.md
+speaker amps on the ASUS ROG Strix G18 G814J (HD Audio subsystem 1043:1ccf). Read README.md
 for what it does. This file is for an AI assistant helping someone build, debug or adapt it.
 
 ## Safety rules (always)

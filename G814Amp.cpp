@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 //
 // G814Amp - driver for the two Cirrus Logic CS35L41 speaker amps on the
-// ASUS ROG Strix G16 (G814J, HD Audio subsystem 1043:1ccf) under macOS.
+// ASUS ROG Strix G18 (G814J, HD Audio subsystem 1043:1ccf) under macOS.
 //
 // The driver attaches to the Intel LPSS SPI controller (8086:7a79, ACPI SPI3). A few
 // seconds after boot it resets both amps, applies the B2 errata and factory trims,
