@@ -105,14 +105,18 @@ You should see `Mode = "firmware (speaker protection, 17.5 dB gain)"`, both amps
 ## Adapting it to another laptop with CS35L41 amps
 
 Many laptops (other ASUS, Lenovo, HP, Dell models) use the same amps, but **pins, bus
-(SPI or I2C), boost values and firmware differ per model**. The repo has a `CLAUDE.md` that
-explains the code and the safety rules, so you can adapt it with an AI coding assistant:
+(SPI or I2C), boost values and firmware differ per model**.
 
-1. Install [Claude Code](https://claude.com/claude-code) and open this repo with it.
-2. Ask something like: *"Adapt G814Amp to my laptop. Read CLAUDE.md first."*
-3. It'll walk you through dumping your ACPI tables, finding your laptop in Linux's
-   `cs35l41_hda_property.c` and the firmware list, and changing the board check, pins, boost
-   values and firmware. Each test boot is done step by step, starting read-only.
+👉 **Step-by-step guide: [docs/PORTING.md](docs/PORTING.md).** No driver experience needed.
+You adapt it with [Claude Code](https://claude.com/claude-code), which reads this repo's
+`CLAUDE.md` (how the code works, plus the safety rules) and does the technical work, while
+you dump your ACPI tables, install test builds and restart.
+
+Short version:
+1. Clone this repo and open it in Claude Code.
+2. Put your ACPI tables in `acpi/`.
+3. Ask: *"I want to adapt G814Amp to my laptop. Read CLAUDE.md and docs/PORTING.md first."*
+4. Follow the staged tests: read-only probe, then low-volume sound, then firmware.
 
 Never guess boost values: if your laptop isn't in Linux's `cs35l41_hda_property.c` table and
 its ACPI has no `_DSD` boost properties, don't enable the boost.

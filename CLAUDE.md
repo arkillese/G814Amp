@@ -52,6 +52,10 @@ for what it does. This file is for an AI assistant helping someone build, debug 
 
 ## Adapting to another laptop
 
+The user-facing walkthrough is `docs/PORTING.md`; follow its stages and keep the user in the
+loop at each restart. The user may not be technical: give exact commands, one step at a
+time, and read Terminal output for them if they can't see it.
+
 1. Get the subsystem ID (`ioreg -l | grep -i '"compatible" = <"pci'` on the HD Audio device)
    and the ACPI tables. Windows: `acpidump.exe -b` from Intel's ACPICA tools. Linux:
    `sudo acpidump`. OpenCore: SysReport. Find the `CSC3551` device and decode its `_CRS`
