@@ -7,7 +7,7 @@ those amps, the way Linux's `cs35l41_hda` driver does, including Cirrus's speake
 firmware.
 
 **Status:** working on a G814JV (Intel i7-13650HX, RTX 4060) with macOS 26.7.2 (Tahoe) and the
-NullMoth driver package 2.7.1. Both speakers play at full, protected volume, start
+NullMoth driver package (2.7.1 and 3.0). Both speakers play at full, protected volume, start
 automatically at boot and recover after sleep.
 
 > ⚠️ **This is an unofficial, experimental kernel driver.** It writes to amplifier, boost and
@@ -19,9 +19,10 @@ automatically at boot and recover after sleep.
 
 - **ASUS ROG Strix G18 G814J** (tested on a G814JV; other G814J variants should work if they have the same subsystem ID). Check: *System Information → Audio* or
   `ioreg -l | grep pci1043,1ccf` must find something.
-- macOS with a working **Realtek ALC294 driver** that outputs to pin 0x17. Tested with
-  **NullMoth 2.7.1's NMXAudio** on macOS 26. The amps take their audio from the Realtek
-  chip, so without a Realtek driver there is nothing to play.
+- macOS with a working **Realtek ALC294 driver**. Tested with **NullMoth 2.7.1's NMXAudio**
+  and, since NullMoth 3.0 (whose NMXAudio only handles HDMI), with **AppleALC (layout 28)
+  driving Apple's AppleHDA**. The amps take their audio from the Realtek chip, so without a
+  Realtek driver there is nothing to play.
 - An OpenCore setup that allows unsigned kexts in `/Library/Extensions` (SIP kext and
   filesystem bits relaxed, AMFI relaxed). This is the same requirement as NullMoth's drivers.
 
@@ -35,7 +36,9 @@ automatically at boot and recover after sleep.
    ```
    Wait for `OK: G814Amp is installed`.
 4. **Shut down** (don't restart), wait 10 seconds and power on.
-5. In **System Settings → Sound → Output**, choose **Realtek ALC294 (Internal Analog)**.
+5. In **System Settings → Sound → Output**, choose the Realtek speaker output:
+   **Built-in Output** (NullMoth 3.0 / AppleALC) or **Realtek ALC294 (Internal Analog)**
+   (NullMoth 2.7.1). Not the NVIDIA HDMI one.
 6. Start with the volume low and turn it up gradually.
 
 ## Uninstall
@@ -71,12 +74,14 @@ You should see `Mode = "firmware (speaker protection, 17.5 dB gain)"`, both amps
 | `probe-tool volume <dB>` | amp volume, −60 to 0 dB (default 0) |
 | `probe-tool read <reg>` | read an amp register from both amps (debug) |
 
-`build/set-output "Internal Analog"` switches macOS's output device from the command line.
+`build/set-output "Built-in Output"` (or `"Internal Analog"`) switches macOS's output device from the command line.
 
 ## Troubleshooting
 
-- **No sound:** make sure the output is *Realtek ALC294 (Internal Analog)*, not Headphones.
-  The amps only get audio while that output is playing.
+- **No sound:** make sure the output is *Built-in Output* (or *Realtek ALC294 (Internal
+  Analog)* with NullMoth 2.7.1), not NVIDIA HDMI or Headphones. The amps only get audio
+  while that output is playing. With AppleHDA, `speaker-route` in the status shows whether
+  pin 0x17 is routed.
 - **Very quiet:** check `Mode`. If it says "no firmware", the firmware didn't start. Look at
   `amp0-dsp` / `amp1-dsp` for the reason.
 - **Graphics fall back to a basic display after an install:** that's a NullMoth NVIDIA quirk.
@@ -98,9 +103,11 @@ You should see `Mode = "firmware (speaker protection, 17.5 dB gain)"`, both amps
 4. **Firmware:** ported from Linux `cs_dsp.c`. It loads the `.wmfw` program and the
    speaker-ID-specific `.bin` tuning into each amp's Halo DSP, starts it, and drives it
    through the CSPL mailbox.
-5. **Playback:** the driver watches NMXAudio's output engine on the Realtek codec. When it
-   runs, the amps are resumed, powered up and unmuted. The Realtek chip clocks the I2S bus
-   to the amps while pin 0x17 streams.
+5. **Playback:** the driver watches the output engine on the Realtek codec (NMXAudio's or
+   AppleHDA's). When it runs, the amps are resumed, powered up and unmuted. The Realtek
+   chip clocks the I2S bus to the amps only while pin 0x17 streams. AppleALC's layout plays
+   on pin 0x14, so with AppleHDA the driver also routes pin 0x17 to the same converter
+   while 0x14 (speakers, not headphones) is on.
 
 ## Adapting it to another laptop with CS35L41 amps
 

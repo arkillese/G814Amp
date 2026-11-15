@@ -7,8 +7,9 @@
 // seconds after boot it resets both amps, applies the B2 errata and factory trims,
 // sets up the internal boost, loads Cirrus's speaker-protection firmware and tuning
 // (picked by the speaker ID pin) into each amp's Halo DSP, and then follows playback:
-// whenever an NMXAudio output on the Realtek codec (00:1f.3) is running, the amps are
-// powered up and unmuted; when it stops they power down. If the amps lose state (for
+// whenever an output on the Realtek codec (00:1f.3) is running (NMXAudio, or AppleHDA via
+// AppleALC, whose layout plays on pin 0x14, so the driver also routes pin 0x17, which
+// clocks the amps), the amps are powered up and unmuted; when it stops they power down. If the amps lose state (for
 // example in sleep) they are set up again. If the firmware cannot be started, the amps
 // fall back to Linux's no-DSP path at low gain.
 //
@@ -263,6 +264,8 @@ class G814Amp : public IOService {
     int fVolumeDB = kDefaultVolumeDB;
     uint32_t fErrors[2] = {};
     uint32_t fStatusUpdates = 0;
+    uint32_t fRouteTicks = 0;   // AppleHDA: ticks since the speaker route was last checked
+    bool fRouteOn = false;      // AppleHDA: speaker pin 0x14 is on, so 0x17 is routed too
     uint32_t fTicks = 0;
     uint32_t fRecoveries = 0;
     int fAutoTries = 0;         // >0 while waiting to start the amps at boot
@@ -316,7 +319,8 @@ class G814Amp : public IOService {
     uint32_t volumeReg() const;
 
     bool hwPrepare(bool publishPads);
-    bool playbackActive();
+    bool playbackActive(bool *appleHDA);
+    bool appleHDASpeakerRoute();
     void timerFired(IOTimerEventSource *sender);
 
     void setNum(const char *key, uint32_t v) { setProperty(key, v, 32); }
@@ -1438,8 +1442,10 @@ void G814Amp::runProbe() {
                      found == 1 ? "probe: one amp answered" : "probe: no amp answered");
 }
 
-// True while any NMXAudio output engine on the Realtek codec (PCI 00:1f.3) runs.
-bool G814Amp::playbackActive() {
+// True while an output engine on the Realtek codec (PCI 00:1f.3) runs: NMXAudio's, or
+// AppleHDA's (NullMoth 3.0's NMXAudio only takes HDMI, AppleALC drives the Realtek).
+bool G814Amp::playbackActive(bool *appleHDA) {
+    *appleHDA = false;
     OSDictionary *match = IOService::serviceMatching("IOAudioEngine");
     if (!match)
         return false;
@@ -1457,16 +1463,38 @@ bool G814Amp::playbackActive() {
             continue;
         const char *s = uid->getCStringNoCopy();
         size_t len = strlen(s);
-        if (strncmp(s, "NMXAudio:00:1f.3/", 17) != 0 || len < 4 || strcmp(s + len - 4, ":out") != 0)
+        bool nmx = strncmp(s, "NMXAudio:00:1f.3/", 17) == 0 && len >= 4 && strcmp(s + len - 4, ":out") == 0;
+        bool hda = strncmp(s, "AppleHDAEngineOutput:1F,3,", 26) == 0;
+        if (!nmx && !hda)
             continue;
         OSNumber *state = OSDynamicCast(OSNumber, eng->getProperty("IOAudioEngineState"));
         if (state && state->unsigned32BitValue() == 1) {
             active = true;
+            *appleHDA = hda;
             break;
         }
     }
     it->release();
     return active;
+}
+
+// AppleALC's ALC294 layout plays the speakers on pin 0x14, but the Realtek only clocks
+// I2S to the amps while pin 0x17 streams. While 0x14 is on (speakers, not headphones),
+// route 0x17 to the same converter (0x02, connection 0), unmuted; otherwise turn it off.
+bool G814Amp::appleHDASpeakerRoute() {
+    uint32_t ctl = 0;
+    if (!codecVerb(0x014F0700, &ctl))       // pin 0x14: get widget control
+        return fRouteOn;
+    bool on = (ctl & 0x40) != 0;
+    if (on) {
+        codecVerb(0x01770100, nullptr);      // pin 0x17: connection select 0 (DAC 0x02)
+        codecVerb(0x0173B000, nullptr);      // pin 0x17: output amp L+R unmuted, 0 dB
+        codecVerb(0x01770740, nullptr);      // pin 0x17: output enable
+    } else {
+        codecVerb(0x01770700, nullptr);      // pin 0x17: off
+    }
+    setStr("speaker-route", on ? "AppleHDA: pin 0x17 routed" : "AppleHDA: speakers not selected");
+    return on;
 }
 
 // A register we set during ampsInit; after sleep (or anything that resets the amps or
@@ -1506,7 +1534,16 @@ void G814Amp::timerFired(IOTimerEventSource *sender) {
     }
 
     if (fEnabled && fAmpsReady) {
-        bool want = playbackActive();
+        bool hda = false;
+        bool want = playbackActive(&hda);
+        if (want && hda) {
+            // Check the route at playback start and then every ~2 s (headphone switches).
+            if (!fPlaying || ++fRouteTicks % 13 == 0)
+                fRouteOn = appleHDASpeakerRoute();
+            want = fRouteOn;
+        } else {
+            fRouteTicks = 0;
+        }
         if (want != fPlaying) {
             if (want)
                 sendPlaybackVerbs();

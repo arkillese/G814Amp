@@ -47,7 +47,9 @@ for what it does. This file is for an AI assistant helping someone build, debug 
 - Firmware: `halo_cspl_RAM_revB2_29.63.1.wmfw` plus `cs35l41-dsp1-spk-prot-10431ccf-
   spkid{0,1}-{l0,r0}.bin`. Gain with firmware is 17.5 dB PCM / 19.5 dB PDM (Linux defaults).
 - The Realtek ALC294 only clocks I2S to the amps while pin 0x17 streams (NMXAudio's
-  "Internal Analog" output). The amps' `IRQ1_RAW_STATUS3` bit 1 (PLL_LOCK) shows whether
+  "Internal Analog" output). Since NullMoth 3.0, NMXAudio only takes NVIDIA HDMI and
+  AppleALC (layout 28) + AppleHDA drive the Realtek on pin 0x14 ("Built-in Output"), so
+  the driver routes pin 0x17 (connection 0 = DAC 0x02) itself while 0x14 is enabled. The amps' `IRQ1_RAW_STATUS3` bit 1 (PLL_LOCK) shows whether
   BCLK arrives.
 
 ## Adapting to another laptop
